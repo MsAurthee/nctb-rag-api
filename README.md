@@ -158,7 +158,7 @@ Cloud-based LLM fallback
 
 👩‍💻 Author
 
-Marjan Sultana Aurthee
+Marjana Sultana Aurthee
 CSE | AI & RAG Systems
 GitHub: https://github.com/MsAurthee
 
