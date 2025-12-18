@@ -1,132 +1,178 @@
-# Tesseract OCR
+📘 NCTB RAG API
 
-[![Coverity Scan Build Status](https://scan.coverity.com/projects/tesseract-ocr/badge.svg)](https://scan.coverity.com/projects/tesseract-ocr)
-[![CodeQL](https://github.com/tesseract-ocr/tesseract/workflows/CodeQL/badge.svg)](https://github.com/tesseract-ocr/tesseract/security/code-scanning)
-[![OSS-Fuzz](https://img.shields.io/badge/oss--fuzz-fuzzing-brightgreen)](https://issues.oss-fuzz.com/issues?q=is:open%20title:tesseract-ocr)
-\
-[![GitHub license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://raw.githubusercontent.com/tesseract-ocr/tesseract/main/LICENSE)
-[![Downloads](https://img.shields.io/badge/download-all%20releases-brightgreen.svg)](https://github.com/tesseract-ocr/tesseract/releases/)
+Retrieval-Augmented Generation (RAG) API for NCTB Textbooks
 
-## Table of Contents
+🧠 Project Overview
 
-* [Tesseract OCR](#tesseract-ocr)
-  * [About](#about)
-  * [Brief history](#brief-history)
-  * [Installing Tesseract](#installing-tesseract)
-  * [Running Tesseract](#running-tesseract)
-  * [For developers](#for-developers)
-  * [Support](#support)
-  * [License](#license)
-  * [Dependencies](#dependencies)
-  * [Latest Version of README](#latest-version-of-readme)
+NCTB RAG API is a backend service that allows users to ask questions from NCTB textbooks and receive accurate, context-based answers.
 
-## About
+The system uses Retrieval-Augmented Generation (RAG), which means:
 
-This package contains an **OCR engine** - `libtesseract` and a **command line program** - `tesseract`.
+Answers are generated only from textbook content
 
-Tesseract 4 adds a new neural net (LSTM) based [OCR engine](https://en.wikipedia.org/wiki/Optical_character_recognition) which is focused on line recognition, but also still supports the legacy Tesseract OCR engine of Tesseract 3 which works by recognizing character patterns. Compatibility with Tesseract 3 is enabled by using the Legacy OCR Engine mode (--oem 0).
-It also needs [traineddata](https://tesseract-ocr.github.io/tessdoc/Data-Files.html) files which support the legacy engine, for example those from the [tessdata](https://github.com/tesseract-ocr/tessdata) repository.
+If the answer is not found in the books, the system clearly says so
 
-Stefan Weil is the current lead developer. Ray Smith was the lead developer until 2018. The maintainer is Zdenko Podobny. For a list of contributors see [AUTHORS](https://github.com/tesseract-ocr/tesseract/blob/main/AUTHORS)
-and GitHub's log of [contributors](https://github.com/tesseract-ocr/tesseract/graphs/contributors).
+No hallucinated or made-up answers
 
-Tesseract has **unicode (UTF-8) support**, and can **recognize [more than 100 languages](https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html)** "out of the box".
+🏗️ Architecture (High Level)
+User Question
+      ↓
+Vector Search (ChromaDB)
+      ↓
+Relevant NCTB Text Chunks
+      ↓
+Prompt + Context
+      ↓
+LLM (Phi / Ollama / HF)
+      ↓
+Final Answer
 
-Tesseract supports **[various image formats](https://tesseract-ocr.github.io/tessdoc/InputFormats)** including PNG, JPEG and TIFF.
+🚀 Tech Stack
+Layer	Technology
+API Framework	FastAPI
+LLM	Ollama (Phi) / HuggingFace
+Embeddings	sentence-transformers
+Vector Database	ChromaDB
+Language	Python 3
+Deployment	Render
+API Docs	Swagger (OpenAPI)
+📂 Project Structure
+nctb-rag-api/
+│
+├── scripts/
+│   ├── rag_api.py        # Main FastAPI application
+│
+├── vector_db/            # Chroma persistent vector database
+│
+├── requirements.txt      # Python dependencies
+│
+├── README.md             # Project documentation
+│
+└── .gitignore
 
-Tesseract supports **various output formats**: plain text, hOCR (HTML), PDF, invisible-text-only PDF, TSV, ALTO and PAGE.
+⚙️ How RAG Works in This Project
 
-You should note that in many cases, in order to get better OCR results, you'll need to **[improve the quality](https://tesseract-ocr.github.io/tessdoc/ImproveQuality.html) of the image** you are giving Tesseract.
+NCTB books are converted into text
 
-This project **does not include a GUI application**. If you need one, please see the [3rdParty](https://tesseract-ocr.github.io/tessdoc/User-Projects-%E2%80%93-3rdParty.html) documentation.
+Text is split into small chunks
 
-Tesseract **can be trained to recognize other languages**.
-See [Tesseract Training](https://tesseract-ocr.github.io/tessdoc/Training-Tesseract.html) for more information.
+Each chunk is converted into embeddings
 
-## Brief history
+Embeddings are stored in ChromaDB
 
-Tesseract was originally developed at Hewlett-Packard Laboratories Bristol UK and at Hewlett-Packard Co, Greeley Colorado USA between 1985 and 1994, with some more changes made in 1996 to port to Windows, and some C++izing in 1998. In 2005 Tesseract was open sourced by HP. From 2006 until November 2018 it was developed by Google.
+User asks a question
 
-Major version 5 is the current stable version and started with release
-[5.0.0](https://github.com/tesseract-ocr/tesseract/releases/tag/5.0.0) on November 30, 2021. Newer minor versions and bugfix versions are available from
-[GitHub](https://github.com/tesseract-ocr/tesseract/releases/).
+Most relevant chunks are retrieved
 
-Latest source code is available from [main branch on GitHub](https://github.com/tesseract-ocr/tesseract/tree/main).
-Open issues can be found in [issue tracker](https://github.com/tesseract-ocr/tesseract/issues),
-and [planning documentation](https://tesseract-ocr.github.io/tessdoc/Planning.html).
+LLM answers only using retrieved context
 
-See **[Release Notes](https://tesseract-ocr.github.io/tessdoc/ReleaseNotes.html)**
-and **[Change Log](https://github.com/tesseract-ocr/tesseract/blob/main/ChangeLog)** for more details of the releases.
+If context is missing:
 
-## Installing Tesseract
+"এই তথ্যটি NCTB বইয়ে পাওয়া যায়নি।"
 
-You can either [Install Tesseract via pre-built binary package](https://tesseract-ocr.github.io/tessdoc/Installation.html)
-or [build it from source](https://tesseract-ocr.github.io/tessdoc/Compiling.html).
+🔌 API Endpoint
+POST /ask
 
-Before building Tesseract from source, please check that your system has a compiler which is one of the [supported compilers](https://tesseract-ocr.github.io/tessdoc/supported-compilers.html).
+Ask a question from NCTB textbooks.
 
-## Running Tesseract
+Request Body
+{
+  "question": "What is a noun?"
+}
 
-Basic **[command line usage](https://tesseract-ocr.github.io/tessdoc/Command-Line-Usage.html)**:
+Response
+{
+  "answer": "A noun is a word that names a person, place, thing, or idea."
+}
 
-    tesseract imagename outputbase [-l lang] [--oem ocrenginemode] [--psm pagesegmode] [configfiles...]
+📑 API Documentation (Swagger)
 
-For more information about the various command line options use `tesseract --help` or `man tesseract`.
+After running the server, open in browser:
 
-Examples can be found in the [documentation](https://tesseract-ocr.github.io/tessdoc/Command-Line-Usage.html#simplest-invocation-to-ocr-an-image).
+http://localhost:10000/docs
 
-## For developers
 
-Developers can use `libtesseract` [C](https://github.com/tesseract-ocr/tesseract/blob/main/include/tesseract/capi.h) or
-[C++](https://github.com/tesseract-ocr/tesseract/blob/main/include/tesseract/baseapi.h) API to build their own application. If you need bindings to `libtesseract` for other programming languages, please see the
-[wrapper](https://tesseract-ocr.github.io/tessdoc/AddOns.html#tesseract-wrappers) section in the AddOns documentation.
+or (Render URL):
 
-Documentation of Tesseract generated from source code by doxygen can be found on [tesseract-ocr.github.io](https://tesseract-ocr.github.io/).
+https://<your-service-name>.onrender.com/docs
 
-## Support
+🖥️ Local Setup (Development)
+1️⃣ Clone the Repository
+git clone https://github.com/MsAurthee/nctb-rag-api.git
+cd nctb-rag-api
 
-Before you submit an issue, please review **[the guidelines for this repository](https://github.com/tesseract-ocr/tesseract/blob/main/CONTRIBUTING.md)**.
+2️⃣ Create Virtual Environment
+python -m venv venv_rag
+source venv_rag/bin/activate   # Linux/Mac
+venv_rag\Scripts\activate      # Windows
 
-For support, first read the [documentation](https://tesseract-ocr.github.io/tessdoc/),
-particularly the [FAQ](https://tesseract-ocr.github.io/tessdoc/FAQ.html) to see if your problem is addressed there.
-If not, search the [Tesseract user forum](https://groups.google.com/g/tesseract-ocr), the [Tesseract developer forum](https://groups.google.com/g/tesseract-dev) and [past issues](https://github.com/tesseract-ocr/tesseract/issues), and if you still can't find what you need, ask for support in the mailing-lists.
+3️⃣ Install Dependencies
+pip install -r requirements.txt
 
-Mailing-lists:
+4️⃣ Run the API
+uvicorn scripts.rag_api:app --host 0.0.0.0 --port 10000
 
-* [tesseract-ocr](https://groups.google.com/g/tesseract-ocr) - For tesseract users.
-* [tesseract-dev](https://groups.google.com/g/tesseract-dev) - For tesseract developers.
+☁️ Deployment (Render)
+Render Configuration
+Field	Value
+Language	Python 3
+Build Command	pip install -r requirements.txt
+Start Command	uvicorn scripts.rag_api:app --host 0.0.0.0 --port 10000
+Instance Type	Standard (2GB RAM)
 
-Please report an issue only for a **bug**, not for asking questions.
+⚠️ Free tier (512MB) is not sufficient for LLM-based workloads.
 
-## License
+🧪 Error Handling
 
-    The code in this repository is licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+Missing context → Safe fallback response
 
-       http://www.apache.org/licenses/LICENSE-2.0
+LLM failure → API returns meaningful error
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+No hallucinated answers
 
-**NOTE**: This software depends on other packages that may be licensed under different open source licenses.
+Debug logging enabled for development
 
-Tesseract uses [Leptonica library](http://leptonica.com/) which essentially
-uses a [BSD 2-clause license](http://leptonica.com/about-the-license.html).
+🔐 Security & Design Choices
 
-## Dependencies
+Stateless API
 
-Tesseract uses [Leptonica library](https://github.com/DanBloomberg/leptonica)
-for opening input images (e.g. not documents like pdf).
-It is suggested to use leptonica with built-in support for [zlib](https://zlib.net),
-[png](https://sourceforge.net/projects/libpng) and
-[tiff](http://www.simplesystems.org/libtiff) (for multipage tiff).
+No user data stored
 
-## Latest Version of README
+Vector DB is read-only during query
 
-For the latest online version of the README.md see:
+Safe prompt constraints enforced
 
-<https://github.com/tesseract-ocr/tesseract/blob/main/README.md>
+🔮 Future Improvements
+
+Frontend UI (React / Next.js)
+
+Authentication & rate limiting
+
+Multi-book selection
+
+Bangla OCR optimization
+
+Streaming responses
+
+Cloud-based LLM fallback
+
+👩‍💻 Author
+
+Marjan Sultana Aurthee
+CSE | AI & RAG Systems
+GitHub: https://github.com/MsAurthee
+
+⭐ Final Note
+
+This project is designed to be:
+
+Explainable
+
+Reliable
+
+Education-focused
+
+Production-ready
+
+If you are a frontend developer, simply consume the /ask API.
+All intelligence is handled in the backend.
